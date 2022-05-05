@@ -14,8 +14,6 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from werkzeug.utils import secure_filename
 
-#from gevent.pywsgi import WSGIServer
-
 # Define a flask app
 app = Flask(__name__)
 
@@ -26,37 +24,25 @@ MODEL_PATH ='model_resnet152V2_2.2.0.h5'
 model = load_model(MODEL_PATH)
 
 
-
-
 def model_predict(img_path, model):
-    print(img_path)
     img = image.load_img(img_path, target_size=(224, 224))
 
     # Preprocessing the image
     x = image.img_to_array(img)
-    # x = np.true_divide(x, 255)
     ## Scaling
     x=x/255
     x = np.expand_dims(x, axis=0)
-   
-
-    # Be careful how your trained model deals with the input
-    # otherwise, it won't make correct prediction!
-   # x = preprocess_input(x)
 
     preds = model.predict(x)
     preds=np.argmax(preds, axis=1)
-    if preds==0:
-        preds="The leaf is diseased cotton leaf"
-    elif preds==1:
-        preds="The leaf is diseased cotton plant"
-    elif preds==2:
-        preds="The leaf is fresh cotton leaf"
+    if preds == 0:
+        preds = "The leaf is diseased cotton leaf"
+    elif preds == 1:
+        preds = "The leaf is diseased cotton plant"
+    elif preds == 2:
+        preds = "The leaf is fresh cotton leaf"
     else:
-        preds="The leaf is fresh cotton plant"
-        
-    
-    
+        preds = "The leaf is fresh cotton plant"
     return preds
 
 
@@ -66,7 +52,7 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/predict', methods=['GET', 'POST'])
+@app.route('/predict', methods=['POST'])
 def upload():
     if request.method == 'POST':
         # Get the file from post request
@@ -74,15 +60,17 @@ def upload():
 
         # Save the file to ./uploads
         basepath = os.path.dirname(__file__)
-        file_path = os.path.join(
-            basepath, 'uploads', secure_filename(f.filename))
+        file_path = os.path.join(basepath, 'uploads', secure_filename(f.filename))
         f.save(file_path)
+        f.close()
 
         # Make prediction
         preds = model_predict(file_path, model)
-        result=preds
-        return result
-    return None
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        return preds
 
 
 if __name__ == '__main__':
